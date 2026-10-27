@@ -101,3 +101,18 @@ test('S3 reconoce fallos DNS y de conexión agregados sin ocultar errores de per
   const storage = new S3Storage(testConfig(), { async send() { throw denied; } });
   await assert.rejects(storage.get('radicados/prueba.pdf'), error => error === denied);
 });
+
+test('S3 identifica NoSuchBucket por nombre o código sin crear buckets automáticamente', async () => {
+  for (const cause of [Object.assign(new Error(), { name: 'NoSuchBucket' }), Object.assign(new Error(), { Code: 'NoSuchBucket' }), Object.assign(new Error(), { code: 'NoSuchBucket' })]) {
+    const commands = [];
+    const storage = new S3Storage(testConfig(), { async send(command) { commands.push(command.constructor.name); throw cause; } });
+    for (const operation of [
+      () => storage.put('radicados/prueba.pdf', Buffer.from('prueba'), 'application/pdf', 'prueba.pdf'),
+      () => storage.get('radicados/prueba.pdf'),
+      () => storage.remove('radicados/prueba.pdf'),
+    ]) {
+      await assert.rejects(operation(), error => error.status === 503 && error.code === 'ALMACENAMIENTO_SIN_BUCKET' && error.cause === cause);
+    }
+    assert.deepEqual(commands, ['PutObjectCommand', 'GetObjectCommand', 'DeleteObjectCommand']);
+  }
+});

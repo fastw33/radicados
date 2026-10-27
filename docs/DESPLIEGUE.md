@@ -49,7 +49,20 @@ El Dockerfile incluye un healthcheck que consulta `/ready` con el propio Node, s
 
 Se construyó y probó la imagen localmente en Docker Linux: dos conversiones reales del membrete Word, estampado, metadatos Genika, reconocimiento de marcas y respuesta del healthcheck tanto con disponibilidad como sin ella. La prueba se ejecutó sin red ni credenciales reales y confirmó que la imagen usa un usuario sin privilegios y excluye los archivos `.env`. Esto valida la imagen, pero no comprueba la conectividad ni los recursos del VPS.
 
-Configurar HTTPS para `radicados.appfastway.com` hacia el puerto interno `3010`, cargas de al menos 25 MiB y timeout de al menos 180 segundos. La API no confía por defecto en cabeceras reenviadas: detrás de un proxy el limitador compartirá la cuota por la IP del proxy. Ajustar la confianza solo conociendo la topología del despliegue.
+Configurar HTTPS para `radicados.appfastway.com` hacia el puerto interno `3010`, cargas de al menos 25 MiB y timeout de al menos 180 segundos. Configurar `TRUST_PROXY_HOPS=1` cuando el único proxy delante de la aplicación sea Traefik de Coolify. Mantener vacío el mapeo de puertos públicos: el puerto 3010 debe ser accesible a través del proxy, sin un acceso directo que permita suplantar las cabeceras. El valor por defecto es `0` para acceso directo local; si hay más proxies, ajustar el número a la topología real. No se usa confianza ilimitada ni se desactivan las comprobaciones de express-rate-limit.
+
+### Error NoSuchBucket al preparar un documento
+
+`NoSuchBucket` indica que el servicio S3 alcanzado no encuentra el bucket configurado. En la consola del MinIO del VPS, crear **radicados** con acceso privado y conceder al usuario de la API permisos para guardar, leer y eliminar objetos de ese bucket. Comprobar en las variables de ejecución de Coolify:
+
+```dotenv
+S3_BUCKET=radicados
+S3_PREFIX=radicados
+S3_FORCE_PATH_STYLE=true
+TRUST_PROXY_HOPS=1
+```
+
+`S3_ENDPOINT` debe apuntar a la API S3 del MinIO correcto, con puerto `9000`. La consola usa `9001`. Un bucket creado localmente o en otro MinIO no existe en el almacenamiento del VPS. Después de cambiar variables, guardar y redesplegar la aplicación. La API devolverá `503 ALMACENAMIENTO_SIN_BUCKET` con una referencia de atención si falta el bucket; no creará recursos automáticamente ni cambiará sus políticas de acceso.
 
 Comprobar `/health` y `/ready`; después probar con una sesión WMS la preparación de DOCX, emisión, descarga y verificación. `/ready` comprueba Mongo, pero no S3 ni LibreOffice; el flujo documental verifica esas integraciones. El log `Conversor de Word preparado` confirma el arranque del motor.
 

@@ -22,7 +22,7 @@ function createErrorHandler(logger = console) {
     }
     if (status >= 500) logger.error(JSON.stringify({
       requestId: req.requestId, code, name: error.name,
-      ...(error.service === 'S3' ? { servicio: 'S3', operacion: error.operation, causa: error.cause?.code } : {}),
+      ...(error.service === 'S3' ? { servicio: 'S3', operacion: error.operation, causa: error.cause?.code || error.cause?.Code || error.cause?.name } : {}),
     }));
     res.status(status).json({ error: { codigo: code, mensaje: message, ...(details ? { detalles: details } : {}) }, requestId: req.requestId });
   };

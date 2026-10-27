@@ -16,6 +16,8 @@ function createApp({ service, config, ready = () => true, logger = console }) {
   const app = express();
   app.disable('x-powered-by');
   app.set('query parser', 'simple');
+  // Coolify: un salto si Traefik es el único proxy y no se publica el puerto directo.
+  app.set('trust proxy', config.TRUST_PROXY_HOPS || 0);
   app.use(helmet());
   app.use(cors({
     origin(origin, done) {

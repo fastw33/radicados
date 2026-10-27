@@ -7,6 +7,7 @@ function loadConfig(env = process.env) {
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     HOST: z.string().default('127.0.0.1'),
     PORT: z.coerce.number().int().min(1).max(65535).default(3010),
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(0),
     MONGO_URI: z.string().min(1),
     MONGO_DB_NAME: z.string().regex(/^[a-zA-Z0-9_-]+$/).default('radicados'),
     // Se valida con el secreto ya emitido por Genika, sin rotarlo ni sustituirlo.

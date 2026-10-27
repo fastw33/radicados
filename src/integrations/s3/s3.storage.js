@@ -23,10 +23,13 @@ class S3Storage {
       return await this.client.send(command);
     } catch (error) {
       const candidates = [error, error.cause, ...(Array.isArray(error.errors) ? error.errors : [])];
+      const missingBucket = candidates.find(item => [item?.name, item?.code, item?.Code].includes('NoSuchBucket'));
       const network = candidates.find(item => ['ECONNREFUSED', 'ECONNRESET', 'ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'EHOSTUNREACH', 'ENETUNREACH'].includes(item?.code));
-      if (!network) throw error;
-      const failure = new HttpError(503, 'ALMACENAMIENTO_NO_DISPONIBLE', 'No se pudo conectar con el almacenamiento de documentos. El administrador debe revisar el servicio S3 configurado');
-      failure.cause = network;
+      if (!missingBucket && !network) throw error;
+      const failure = missingBucket
+        ? new HttpError(503, 'ALMACENAMIENTO_SIN_BUCKET', 'El almacenamiento de documentos no está configurado. El administrador debe crear o revisar el bucket de Radicaciones en S3 o MinIO')
+        : new HttpError(503, 'ALMACENAMIENTO_NO_DISPONIBLE', 'No se pudo conectar con el almacenamiento de documentos. El administrador debe revisar el servicio S3 configurado');
+      failure.cause = missingBucket || network;
       failure.service = 'S3';
       failure.operation = command.constructor.name;
       throw failure;

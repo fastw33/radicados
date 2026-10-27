@@ -49,3 +49,17 @@ test('S3 sin conexión devuelve un mensaje útil y registra la dependencia sin e
   assert.deepEqual(logs, [{ requestId: response.body.requestId, code: 'ALMACENAMIENTO_NO_DISPONIBLE', name: 'Error', servicio: 'S3', operacion: 'PutObjectCommand', causa: 'ECONNREFUSED' }]);
   assert.doesNotMatch(JSON.stringify({ logs, body: response.body }), /credencial-interna-de-prueba/);
 });
+
+test('S3 sin bucket devuelve una causa accionable en lugar de un 500 genérico', async () => {
+  const logs = [];
+  const storage = new S3Storage(testConfig(), { async send() {
+    throw Object.assign(new Error('credencial-interna-de-prueba'), { name: 'NoSuchBucket' });
+  } });
+  const response = await preparationRequest(file => storage.put('radicados/prueba.docx', file.buffer, file.mimetype, file.originalname), { error(line) { logs.push(JSON.parse(line)); } });
+  assert.equal(response.status, 503);
+  assert.equal(response.body.error.codigo, 'ALMACENAMIENTO_SIN_BUCKET');
+  assert.match(response.body.error.mensaje, /crear o revisar el bucket/);
+  assert.equal(response.body.requestId, response.headers['x-request-id']);
+  assert.deepEqual(logs, [{ requestId: response.body.requestId, code: 'ALMACENAMIENTO_SIN_BUCKET', name: 'Error', servicio: 'S3', operacion: 'PutObjectCommand', causa: 'NoSuchBucket' }]);
+  assert.doesNotMatch(JSON.stringify({ logs, body: response.body }), /credencial-interna-de-prueba/);
+});
