@@ -1,0 +1,9 @@
+node_modules
+.env
+.env.*
+.git
+.runtime
+tmp
+output
+test
+*.log

@@ -1,0 +1,91 @@
+@base = http://127.0.0.1:3010/api/v1
+@token = PEGAR_JWT_DE_GENIKA
+@preparacionId = PEGAR_ID_DE_PREPARACION
+@radicadoId = PEGAR_ID_DEL_RADICADO
+@clave = GENERAR_UUID_NUEVO_POR_EMISION
+
+### Empresas autorizadas
+GET {{base}}/empresas
+Authorization: Bearer {{token}}
+
+### Crear/actualizar empresa (administrador). Reemplazar con datos reales.
+PUT {{base}}/empresas/mi-empresa
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": "mi-empresa",
+  "nombre": "Nombre real de la empresa",
+  "prefijo": "GEN",
+  "activo": true,
+  "areas": [{ "id": "administracion", "nombre": "Administración" }],
+  "usuariosPermitidos": ["123"]
+}
+
+### Preparar un archivo. Ajustar la ruta local.
+POST {{base}}/preparaciones
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=GenikaBoundary
+
+--GenikaBoundary
+Content-Disposition: form-data; name="documento"; filename="carta.docx"
+Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+
+< ./carta.docx
+--GenikaBoundary--
+
+### Descargar la vista previa
+GET {{base}}/preparaciones/{{preparacionId}}/pdf
+Authorization: Bearer {{token}}
+
+### Emitir. Reutilizar clave si se reintenta exactamente la misma solicitud.
+POST {{base}}/radicados
+Authorization: Bearer {{token}}
+Idempotency-Key: {{clave}}
+Content-Type: application/json
+
+{
+  "preparacionId": "{{preparacionId}}",
+  "empresaId": "mi-empresa",
+  "areaId": "administracion",
+  "referencia": "Carta de presentación",
+  "responsable": { "id": "123", "nombre": "Nombre del responsable" },
+  "destinatario": "Nombre del destinatario",
+  "fechaEmision": "2026-10-26",
+  "ubicaciones": [{ "pagina": 1, "zona": "encabezado", "x": 0.43, "y": 0.075, "ancho": 0.28, "alto": 0.025, "tamanoFuente": 9 }]
+}
+
+### Listar
+GET {{base}}/radicados?pagina=1&limite=25
+Authorization: Bearer {{token}}
+
+### Consultar trazabilidad
+GET {{base}}/radicados/{{radicadoId}}
+Authorization: Bearer {{token}}
+
+### Descargar PDF final
+GET {{base}}/radicados/{{radicadoId}}/pdf
+Authorization: Bearer {{token}}
+
+### Descargar original
+GET {{base}}/radicados/{{radicadoId}}/original
+Authorization: Bearer {{token}}
+
+### Verificar. Ajustar ruta del PDF recibido.
+POST {{base}}/verificaciones
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=GenikaBoundary
+
+--GenikaBoundary
+Content-Disposition: form-data; name="documento"; filename="recibido.pdf"
+Content-Type: application/pdf
+
+< ./recibido.pdf
+--GenikaBoundary--
+
+### Anular (administrador)
+POST {{base}}/radicados/{{radicadoId}}/anulaciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "motivo": "Documento reemplazado por corrección de contenido" }
